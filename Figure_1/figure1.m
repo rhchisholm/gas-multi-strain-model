@@ -1,0 +1,125 @@
+% Produces Figure 1 in Chisholm et al., Unravelling 
+% the within-host dynamics of group A Streptococcus from population-level 
+% observations of prevalence and strain diversity
+
+close all
+clear all
+set(0,'DefaultAxesFontSize',20)
+set(0,'DefaultAxesFontName','Arial')
+
+if ~exist('figure1_figure_files', 'dir')
+    mkdir('figure1_figure_files')
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% PLOTTING GLOBAL EPI DATA: %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Get global data from csv file: each row is data for a country/region,   
+% columns store country code, strain diversity, prevalence, Human 
+% Development Index (HDI), country group
+M = readtable('Data.csv','Delimiter',',','Format','%s%f%f%f%f',...
+    'ReadVariableNames', true, 'ReadRowNames', false);
+M = table2cell(M);
+CountryLabels = cell2mat(M(:,1));
+M = cell2mat(M(:,2:5));
+
+% Determine partitioning of data into 2 clusters, using Smeesters et al.
+% 2009:
+[idx12,~] = find(M(:,4) < 3);
+[idx3,~] = find(M(:,4) == 3);
+M_cluster_12 = M(idx12,:);
+M_cluster_3 = M(idx3,:);
+CL_12 = CountryLabels(idx12,:);
+CL_3 = CountryLabels(idx3,:);
+
+% Display data as scatterplot, differentiating between the two data 
+% clusters by shape of data point, while the color of data points indicates
+% the level of poverty as measured by 1 - HDI
+
+% Offset of data labels from centre of points
+dx = 1.2;
+dy = 0;
+
+% Plot global data as scatter plot (modifying prevalence from number of 
+% cases per 100,000 to % of population)
+scatter(M_cluster_12(:,1),M_cluster_12(:,2)/100000*100,250,1-M_cluster_12(:,3),'filled','d')
+hold on
+text(M_cluster_12(:,1)+dx,(M_cluster_12(:,2)+dy)/100000*100,cellstr(CL_12),'FontSize',14)
+hold on
+scatter(M_cluster_3(:,1),M_cluster_3(:,2)/100000*100,250,1-M_cluster_3(:,3),'filled')
+hold on
+text(M_cluster_3(:,1)+dx,(M_cluster_3(:,2)+dy)/100000*100,cellstr(CL_3),'FontSize',14)
+
+set(gca,'yscale','log')
+
+xlabel('Simpsons reciprocal index of diversity of strains')
+
+ylabel({'Estimated prevalence of RHD (%)'})
+
+h = colorbar;
+ylabel(h, {'Degree of poverty';'(1 - Human Development Index)'})
+
+axis([5 55 0.001 10])
+
+legend('Group 1/2','Group 3','Location','southeast')
+
+%savefig('figure1_figure_files/figure1A.fig')
+%saveas(gcf,'figure1_figure_files/figure1A','epsc')
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% PLOTTING LOCAL EPI DATA: %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+load('figure1_local_data.mat');
+      
+[xm,ym] = size(SSPrev_data);
+x = (1:xm)-1;
+y = 1:ym;
+SSPrev_data(SSPrev_data == 0) = NaN;
+
+figure
+plotheatmap(x,y,SSPrev_data)
+axis([-0.03 22.005 0.4 42.6])
+
+%savefig('figure1_figure_files/figure1B.fig')
+%saveas(gcf,'figure1_figure_files/figure1B','epsc')
+
+function plotheatmap(x,y,z)
+
+    z(z == 0) = NaN;
+
+    % Grid of strain numbers and months
+    dx = (x(2) - x(1))/2;
+    dy = (y(2) - y(1))/2;
+
+    % Reposition data points so that the middle of a pixel aligns value  
+    % of x and y
+    x = [x-dx x(end)+dx];
+    y = [y-dy y(end)+dy];
+
+    % Adjust boundary
+    zz = zeros(size(z,1)+1,size(z,2)+1);
+    zz(1:size(z,1),1:size(z,2))=z;
+    zz(1:size(z,1),end)=z(:,end);
+    zz(end,1:size(z,2))=z(end,:);
+
+    pcolor(x,y,zz');
+    shading flat
+    h = colorbar;
+    ylabel(h, {'Number of observed infections'})
+    caxis([0 13])
+    xlabel('Time (months)')
+    ylabel('Strain number')
+    % create custom color map
+    map = linspace(0,13,100);
+    map = fliplr(map)';
+    map = [map map map]/13;
+    colormap(map)
+
+end
+
+
+
+
+
