@@ -1,6 +1,8 @@
 function [SSPrev,AgentsInfectedByKStrains] = ...
     simulator(AgentCharacteristics, ImmuneStatus, params, specifyPtransmission)
 
+cross_immunity_effect_on_coinfections = 1; %(1 is on,0 is off)
+
 [Nagents , ~, Nst, AgeDeath, ~, ~,...
     Cpertimestep, MRpertimestep, Precovery, Pimmunityloss, ...
     Ptransmission, x, StrengthImmunity, Immunity, ...
@@ -17,6 +19,7 @@ end
 % Include effect that for co-infected hosts that gain immunity to a
 % particular strain, the residual infections (of other strains) will clear
 % faster due to cross immunity
+dt= dt_years * 52.14;
 Rrecovery = -log(1 - Precovery)/dt; % calculate base recovery rate from base probability of recovery
 if StrengthCrossImmunity ~= 1
     Rrecovery_cici = 1 / ((1 / Rrecovery) * (1 - StrengthCrossImmunity)); % modify rate so that clearance rate speeds up due to cross immunity 
@@ -64,8 +67,7 @@ MaxStrainNumber = Nst;
 
 KeepIndexAllAgents = 1 : Nagents;
 
-coinfected_cross_immune_hosts = [];
-CICI = zeros(size(CurrentCharacteristics(:,1:MaxStrainNumber)));
+CICI = zeros(size(AgentCharacteristics(:,1:MaxStrainNumber)));
 
 for i = 1 : Ntimesteps - 1  
 
@@ -279,24 +281,26 @@ for i = 1 : Ntimesteps - 1
                     idx = IndexOfContacts + (InfectingStrains - 1) * size(AgentCharacteristics,1); % <- FAST
                     AgentCharacteristics(idx) = CurrentCharacteristics(idx) + 1;
                     
-                    % Update matrix that tracks fast recoveries (CICI=1, fast recover, CICI=0, normal)
-                    % Build tempAC2, which represents the additional infections that will 
-                    % now resolve faster due to cross immunity, that need
-                    % to be added to CICI.
-                    tempAC1 = AgentCharacteristics(:,1:Nstrains);
-                    tempAC2 = zeros(size(tempAC1));
-                    % remove all infections of newly acquired strains from
-                    % tempAC1
-                    tempAC1(idx) = 0;
-                    % For newly infected agents infected with other
-                    % strains, make tempAC2=1 for those strains
-                    tempAC1 = tempAC1(IndexOfContacts,:);  
-                    tempAC1(tempAC1>0)=1;
-                    tempAC2(IndexOfContacts,:)=tempAC1;
-                    % tempAC2 now represents additional infections that will 
-                    % now resolve faster, need to add this to CICI: 
-                    CICI=CICI+tempAC2;
-                    CICI(CICI>1)=1;
+                    if cross_immunity_effect_on_coinfections == 1
+                        % Update matrix that tracks fast recoveries (CICI=1, fast recover, CICI=0, normal)
+                        % Build tempAC2, which represents the additional infections that will 
+                        % now resolve faster due to cross immunity, that need
+                        % to be added to CICI.
+                        tempAC1 = AgentCharacteristics(:,1:Nstrains);
+                        tempAC2 = zeros(size(tempAC1));
+                        % remove all infections of newly acquired strains from
+                        % tempAC1
+                        tempAC1(idx) = 0;
+                        % For newly infected agents infected with other
+                        % strains, make tempAC2=1 for those strains
+                        tempAC1 = tempAC1(IndexOfContacts,:);  
+                        tempAC1(tempAC1>0)=1;
+                        tempAC2(IndexOfContacts,:)=tempAC1;
+                        % tempAC2 now represents additional infections that will 
+                        % now resolve faster, need to add this to CICI: 
+                        CICI=CICI+tempAC2;
+                        CICI(CICI>1)=1;
+                    end
                     
                     % Make infected susceptibles not susceptible for next 
                     % infected agent of interest:
