@@ -33,7 +33,8 @@ M_cluster_3 = M(idx3,:);
 CL_12 = CountryLabels(idx12,:);
 CL_3 = CountryLabels(idx3,:);
 
-% Display data as scatterplot, the color of data points indicates
+% Display data as scatterplot, differentiating between the two data 
+% clusters by shape of data point, while the color of data points indicates
 % the level of poverty as measured by 1 - HDI
 
 % Offset of data labels from centre of points
@@ -42,7 +43,7 @@ dy = 0;
 
 % Plot global data as scatter plot (modifying prevalence from number of 
 % cases per 100,000 to % of population)
-scatter(M_cluster_12(:,1),M_cluster_12(:,2)/100000*100,250,1-M_cluster_12(:,3),'filled')%,'d')
+scatter(M_cluster_12(:,1),M_cluster_12(:,2)/100000*100,250,1-M_cluster_12(:,3),'filled','d')
 hold on
 text(M_cluster_12(:,1)+dx,(M_cluster_12(:,2)+dy)/100000*100,cellstr(CL_12),'FontSize',14)
 hold on
@@ -61,7 +62,7 @@ ylabel(h, {'Degree of poverty';'(1 - Human Development Index)'})
 
 axis([5 55 0.001 10])
 
-%legend('Group 1/2','Group 3','Location','southeast')
+legend('Group 1/2','Group 3','Location','southeast')
 
 savefig('figure_files/figure1A.fig')
 saveas(gcf,'figure_files/figure1A','epsc')
