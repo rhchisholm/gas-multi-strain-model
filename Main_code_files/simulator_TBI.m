@@ -1,6 +1,8 @@
 function [SSPrev,AgentsInfectedByKStrains,TimeBetweenInfectionSS] = ...
     simulator_TBI(AgentCharacteristics, ...
-    ImmuneStatus, params, specifyPtransmission)
+    ImmuneStatus, params, specifyPtransmission, cross_immunity_effect_on_coinfections)
+
+% cross_immunity_effect_on_coinfections: 1 is on,0 is off
 
 [Nagents , ~, Nst, AgeDeath, ~, ~,...
     Cpertimestep, MRpertimestep, Precovery, Pimmunityloss, ...
@@ -13,6 +15,18 @@ pregenerate_random_numbers;
 
 if specifyPtransmission == 1
     Ptransmission = 0.0301;
+end
+
+% Include effect that for co-infected hosts that gain immunity to a
+% particular strain, the residual infections (of other strains) will clear
+% faster due to cross immunity
+dt= dt_years * 52.14;
+Rrecovery = -log(1 - Precovery)/dt; % calculate base recovery rate from base probability of recovery
+if StrengthCrossImmunity ~= 1
+    Rrecovery_cici = 1 / ((1 / Rrecovery) * (1 - StrengthCrossImmunity)); % modify rate so that clearance rate speeds up due to cross immunity 
+    Precovery_cici = 1 - exp(- dt * Rrecovery_cici); % calculate probability from rate
+else
+    Precovery_cici = 1;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -60,6 +74,8 @@ MaxStrainNumber = Nst;
 
 KeepIndexAllAgents = 1 : Nagents;
 
+CICI = zeros(size(AgentCharacteristics(:,1:MaxStrainNumber)));
+
 for i = 1 : Ntimesteps - 1  
     
     CurrentTime = i * dt_years;
@@ -74,25 +90,30 @@ for i = 1 : Ntimesteps - 1
     %% RECOVERY %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%    
     % Find index of agents that are infected.   
-    IAgentsInf = find(DD > 0);
-
-    %if isempty(IAgentsInf)
-    %    fprintf('Pathogen extinct')
-    %    break
-    %end
+    %IAgentsInf = find(DD > 0);    
+    % Separate into the co-infected cross immune and otherwise:
+    IAgentsInf_CICI = find(DD > 0 & CICI > 0);
+    IAgentsInf_normal = find(DD > 0 & CICI == 0);
 
     % If n>=1 copies of an infection in host, and host clears one
-    % copy, the host clears all copies.  This happens with probability 
-    % 1 - Pr(host clears 0 copies of infection) = 
-    % 1 - binopdf(0,n,Precovery). 
+    % copy, the host clears all copies.  
     % Remove index of agents from IAgentsInf that do not recover    
-    %IAgentsInf(rand(size(IAgentsInf)) < (1 - (1 - binopdf(0,DD(IAgentsInf),Precovery)))) = [];
-    IAgentsInf(rand(size(IAgentsInf)) < (1 - Precovery)) = [];
+    %IAgentsInf(rand(size(IAgentsInf)) < (1 - Precovery)) = [];
+    IAgentsInf_normal(rand(size(IAgentsInf_normal)) < (1 - Precovery)) = [];
+    IAgentsInf_CICI(rand(size(IAgentsInf_CICI)) < (1 - Precovery_cici)) = [];
     
     % Update infection and immune status
-    AgentCharacteristics(IAgentsInf) = 0;
-    ImmuneStatus(IAgentsInf) = 1 * Immunity;
-    TimeLastInfection(IAgentsInf) = CurrentTime;
+    %AgentCharacteristics(IAgentsInf) = 0;
+    %ImmuneStatus(IAgentsInf) = 1 * Immunity;
+    AgentCharacteristics(IAgentsInf_normal) = 0;
+    AgentCharacteristics(IAgentsInf_CICI) = 0;
+    CICI(IAgentsInf_CICI) = 0;
+    % Only normal recoveries gain strain-specific immunity
+    ImmuneStatus(IAgentsInf_normal) = 1 * Immunity;
+    
+    
+    TimeLastInfection(IAgentsInf_normal) = CurrentTime;
+    TimeLastInfection(IAgentsInf_CICI) = CurrentTime;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %% WANING IMMUNITY %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -281,6 +302,27 @@ for i = 1 : Ntimesteps - 1
                         end
                     end
                     
+                    if cross_immunity_effect_on_coinfections == 1
+                        % Update matrix that tracks fast recoveries (CICI=1, fast recover, CICI=0, normal)
+                        % Build tempAC2, which represents the additional infections that will 
+                        % now resolve faster due to cross immunity, that need
+                        % to be added to CICI.
+                        tempAC1 = AgentCharacteristics(:,1:Nstrains);
+                        tempAC2 = zeros(size(tempAC1));
+                        % remove all infections of newly acquired strains from
+                        % tempAC1
+                        tempAC1(idx) = 0;
+                        % For newly infected agents infected with other
+                        % strains, make tempAC2=1 for those strains
+                        tempAC1 = tempAC1(IndexOfContacts,:);  
+                        tempAC1(tempAC1>0)=1;
+                        tempAC2(IndexOfContacts,:)=tempAC1;
+                        % tempAC2 now represents additional infections that will 
+                        % now resolve faster, need to add this to CICI: 
+                        CICI=CICI+tempAC2;
+                        CICI(CICI>1)=1;
+                    end
+                    
                     % Make infected susceptibles not susceptible for next 
                     % infected agent of interest:
                     InfectionProbability(IndexOfContacts,:) = ...
@@ -308,6 +350,7 @@ for i = 1 : Ntimesteps - 1
     ImmuneStatus(D,:) = 0;
     AgentCharacteristics(D,Nstrains + 1) = 0.001;
     TimeLastInfection(D,:) = -1;
+    CICI(D,:)=0;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %% MIGRATION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -348,6 +391,7 @@ for i = 1 : Ntimesteps - 1
     for h = 1 : NumMig
         % new migrants have no immunity:
         ImmuneStatus(D(h),:) = zeros(1,Nstrains);
+        CICI(D(h),:)=0;
         % new migrants have random age:
         AgentCharacteristics(D(h),end) = rand * AgeDeath;
         % new migrants have up to one infection:

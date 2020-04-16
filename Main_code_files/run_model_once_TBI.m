@@ -1,4 +1,4 @@
-function [TimeBetweenInfectionSS,AvgPrev,AvgDiv,PeriodDiv] = run_model_once_TBI(R0,DI)
+function [TimeBetweenInfectionSS,AvgPrev,AvgDiv,PeriodDiv] = run_model_once_TBI(R0,DI,cross_immunity_effect_on_coinfections)
 
     sigma = 1;
     omega = 0.1;
@@ -41,7 +41,7 @@ function [TimeBetweenInfectionSS,AvgPrev,AvgDiv,PeriodDiv] = run_model_once_TBI(
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     [SSPrev,AgentsInfectedByKStrains,TimeBetweenInfectionSS] = ...
-                    simulator_TBI(AgentCharacteristics, ImmuneStatus, params, 0);
+                    simulator_TBI(AgentCharacteristics, ImmuneStatus, params, 0, cross_immunity_effect_on_coinfections);
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %% Calculate summary stats %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

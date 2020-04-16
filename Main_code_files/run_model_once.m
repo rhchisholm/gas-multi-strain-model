@@ -1,16 +1,12 @@
 % Run model once
 
 clear all
-%close all
+close all
 
 set(0,'DefaultTextFontName','Arial')
 set(0,'DefaultTextFontSize',20)
 set(0,'DefaultAxesFontSize',20)
 set(0,'DefaultAxesFontName','Arial')
-
-sigma = 0;
-omega = 0;
-
 
 rng(3) % seed for the random numbers, needed to reproduce a simulation
 
@@ -18,7 +14,7 @@ rng(3) % seed for the random numbers, needed to reproduce a simulation
 %% Parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Duration of simulation (years)
-DurationSimulation = 10;
+DurationSimulation = 20;
 % Number of strains
 Nstrains = 42;
 % Total number of hosts
@@ -26,15 +22,19 @@ Nagents = 2500;
 % Age that all hosts die (years)
 AgeDeath = 71; 
 % Basic Reproduction Number 
-BasicReproductionNumber = 1.1;  
+BasicReproductionNumber = 2.07;  
 % Duration of immunity (weeks)
-Dimmunity = 71 * 52.14; 
+Dimmunity = 0.5 * 52.14; 
 % Resistance to co-infection
 x = 10;
 % Migration rate per week per population
-alpha = 0;  % daily per capita rate is alpha / 7 / Nagents
+alpha = 3;  % daily per capita rate is alpha / 7 / Nagents
 % Number of contacts per week
 Cperweek = 34.53;
+% Strength of strain-specific immunity
+sigma = 1;
+% Strength of cross-strain immunity
+omega = 0.1;
 
 params = double([DurationSimulation, Nstrains, Dimmunity, ...      
             sigma, omega, x, ...              
@@ -52,7 +52,7 @@ params = double([DurationSimulation, Nstrains, Dimmunity, ...
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 [SSPrev,AgentsInfectedByKStrains] = ...
-                simulator(AgentCharacteristics, ImmuneStatus, params, 0);
+                simulator(AgentCharacteristics, ImmuneStatus, params, 0, 1);
            
 time = linspace(0,DurationSimulation,size(SSPrev,2));
 
@@ -60,7 +60,7 @@ time = linspace(0,DurationSimulation,size(SSPrev,2));
 figure
 xlabel('Time (years)')
 line(time,SSPrev,'LineWidth',2)
-axis([DurationSimulation-2 DurationSimulation 0 500])
+%axis([DurationSimulation-2 DurationSimulation 0 500])
 ylabel('Number of infections')
 
 
@@ -95,7 +95,7 @@ xx = (1:xm);
 y = (1:ym)/365;
 figure
 plotheatmap(xx,y,Outbreak)
-axis([DurationSimulation-2 DurationSimulation 0.4 42.6])
+%axis([DurationSimulation-2 DurationSimulation 0.4 42.6])
 xlabel('Time (years)')
 ylabel('Strain number')
 

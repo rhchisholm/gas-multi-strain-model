@@ -1,7 +1,7 @@
 function [SSPrev,AgentsInfectedByKStrains] = ...
-    simulator(AgentCharacteristics, ImmuneStatus, params, specifyPtransmission)
+    simulator(AgentCharacteristics, ImmuneStatus, params, specifyPtransmission, cross_immunity_effect_on_coinfections)
 
-cross_immunity_effect_on_coinfections = 1; %(1 is on,0 is off)
+% cross_immunity_effect_on_coinfections : 1 is on, 0 is off
 
 [Nagents , ~, Nst, AgeDeath, ~, ~,...
     Cpertimestep, MRpertimestep, Precovery, Pimmunityloss, ...
