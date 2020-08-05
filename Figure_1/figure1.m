@@ -1,6 +1,4 @@
-% Produces Figure 1 in Chisholm et al., Unravelling the immune response to 
-% Group A Streptococcus infection from population-level observations of 
-% prevalence and strain diversity
+% Produces Figure 1 
 
 close all
 clear all
